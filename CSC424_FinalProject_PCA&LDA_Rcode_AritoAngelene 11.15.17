@@ -1,0 +1,192 @@
+#PCA
+
+#install.packages("corrplot")
+#install.packages("car")
+#install.packages("QuantPsyc")
+#install.packages("leaps")
+#install.packages("psych")
+library(corrplot)
+library(car)
+library(QuantPsyc)
+library(leaps)
+library(psych)
+
+#Set working directory
+setwd("c:/users/angelene/desktop")
+
+#Read dataset from HousingNumeric.csv
+housingNum = read.csv("HousingNumeric.csv", header=T)
+head(housingNum)
+
+# K-fold
+n = nrow(housingNum)
+size = n / 2
+set.seed(35852)
+ss = sample(n, size)
+testPCA = housingNum[ss, ]
+trainingPCA = housingNum[-ss, ]
+
+#PCA
+housingPCA = prcomp(trainingPCA)
+print(housingPCA)
+print(summary(housingPCA))
+
+#Scaled PCA
+housingPCA2 = prcomp(trainingPCA, center=T, scale=T)
+print(housingPCA2)
+print(summary(housingPCA2))
+
+#Scaled scree plot
+plot(housingPCA2, main="Housing PCA Scree Plot (Scaled Data)",
+			xlab="Components")
+abline(h=1, col="blue")
+
+#Loadings
+housingPCA2.load = princomp(trainingPCA)
+housingPCA2.load
+summary(housingPCA2.load)
+print(housingPCA2.load$scores)
+round(housingPCA2.load$loadings,2)
+
+#Rotation
+housingPCA2.rot = psych::principal(trainingPCA,rotate="promax",nfactors=8,scores=T)
+print(housingPCA2.rot$loadings, cutoff=.4, sort=T)
+print(housingPCA2.rot, digits=3)
+
+#Remove percentage variables and weight
+housingNum2 = housingNum[, c(2:11,13:31)]
+head(housingNum2)
+
+# K-fold
+n2 = nrow(housingNum2)
+size2 = n2 / 2
+set.seed(35852)
+ss2 = sample(n2, size2)
+testPCA2 = housingNum2[ss2, ]
+trainingPCA2 = housingNum2[-ss2, ]
+
+#Revised PCA
+nopercPCA = prcomp(trainingPCA2, center=T, scale=T)
+print(nopercPCA)
+print(summary(nopercPCA))
+
+#Scaled scree plot
+plot(nopercPCA, main="Housing PCA Scree Plot (Scaled Data, No Perc or Weight Vars)",
+			xlab="Components")
+abline(h=1, col="blue")
+
+#Revised loadings
+nopercPCA.load = princomp(trainingPCA2)
+nopercPCA.load
+summary(nopercPCA.load)
+print(nopercPCA.load$scores)
+round(nopercPCA.load$loadings,2)
+
+#Revised rotation
+nopercPCA.rot = psych::principal(trainingPCA2,rotate="promax",nfactors=6,scores=T)
+print(nopercPCA.rot$loadings, cutoff=.4, sort=T)
+print(nopercPCA.rot, digits=3)
+
+#Correlation
+housing.cor = cor(housingNum)
+housing.cor2 = cor(housingNum2)
+
+#MSA for original set
+KMO(housingNum)
+cortest.bartlett(housing.cor, n = 35852,diag=TRUE)
+
+#MSA for revised set
+KMO(housingNum2)
+cortest.bartlett(housing.cor2, n = 35852,diag=TRUE)
+
+
+
+
+#LDA
+#install.packages("MASS")
+install.packages("corrplot")
+library(MASS)
+library(corrplot)
+
+#Set working directory
+setwd("c:/users/angelene/desktop")
+
+#Read dataset
+housing = read.csv("HousingData.csv", header=T)
+head(housing)
+housingNum = read.csv("HousingNumeric.csv", header=T)
+head(housingNum)
+housingNum2 = housingNum[, c(2:31)]
+head(housingNum2)
+housingNum3 = housingNum2[, c(1:2,6:11,13:16,21,26)]
+head(housingNum3)
+housingNum3$REGION <- housing$REGION
+head(housingNum3)
+
+# K-fold
+n = nrow(housingNum3)
+size = n / 5
+set.seed(35852)
+s = sample(n, size)
+test = housingNum3[s, ]
+training = housingNum3[-s, ]
+
+#LDA
+housingLDA = lda(REGION ~ AGE1 + LMED + FMR + L30 + L50 + L80 + IPOV + BEDRMS +
+		VALUE + NUNITS + ROOMS + WEIGHT + PER + ZINC2 + ZSMHC + UTILITY +
+		OTHERCOST + COST06 + COST12 + COST08 + COSTMED + TOTSAL + GLMED
+		+ GL30 + GL50 + GL80 + APLMED + ABL30 + ABL50 + ABL80 + ABLMED +
+		BURDEN, data=housing)
+housingLDA
+
+#Correlation matrix to check for multicollinearity
+corr.matrix <- cor(housingNum2)
+corr.matrix
+corr.matrix2 <- cor(housingNum3)
+corr.matrix2
+
+#Revised LDA - highly correlated variables removed
+housingLDA2 = lda(REGION ~ LMED + FMR + IPOV + BEDRMS + VALUE + NUNITS
+	+ ROOMS + WEIGHT + ZINC2 + ZSMHC + UTILITY + OTHERCOST + TOTSAL + 
+	APLMED, data=training)
+housingLDA2
+
+#Predict class for training and test sets
+housingtrain = predict(housingLDA2, newdata=training[,1:14])
+housingtrain
+housingtest = predict(housingLDA2, newdata=test[,1:14])
+housingtest
+housingtrainclass = predict(housingLDA2, newdata=training[,1:14])$class
+housingtestclass = predict(housingLDA2, newdata=test[,1:14])$class
+
+table(housingtrainclass, training[,15])
+table(housingtestclass, test[,15])
+
+#LDA using highest loadings from PCA
+housingNum$REGION <- housing$REGION
+head(housingNum)
+
+# K-fold
+n3 = nrow(housingNum)
+size3 = n3 / 5
+set.seed(35852)
+s3 = sample(n3, size3)
+test2 = housingNum[s3, ]
+training2 = housingNum[-s3, ]
+head(training2)
+
+#Revised LDA using highest loadings from PCA
+housingLDA3 = lda(REGION ~ LMED + PER + COST06 + COST08 + COST12 + 
+		BEDRMS + TOTSAL + NUNITS, data=training2)
+housingLDA3
+
+#Predict class for training and test sets using PCs
+housingtrain2 = predict(housingLDA3, newdata=training2[,1:47])
+housingtrain2
+housingtest2 = predict(housingLDA3, newdata=test2[,1:47])
+housingtest2
+housingtrainclass2 = predict(housingLDA3, newdata=training2[,1:47])$class
+housingtestclass2 = predict(housingLDA3, newdata=test2[,1:47])$class
+
+table(housingtrainclass2, training2[,48])
+table(housingtestclass2, test2[,48])
